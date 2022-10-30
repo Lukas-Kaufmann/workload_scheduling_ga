@@ -1,27 +1,16 @@
 import sim.ComputeNode
 import sim.WorkLoad
-import java.lang.Math.random
-import kotlin.math.sin
 
 //TODO refactor to function that takes nodes and workloads as input and gives
 
+fun randomNodesAndWorkloads(nrNodes: Int, nrWorkloads: Int) = Pair((1..nrNodes).map { ComputeNode(it) }, (1..nrWorkloads).map {WorkLoad.newRandom(it)})
+
 fun main(args: Array<String>) {
-    var nodes = (1..20).map { ComputeNode(it) }
-    var workloads = (1..100).map {WorkLoad.newRandom(it)}
+    var p = randomNodesAndWorkloads(20, 200)
+    var nodes = p.first
+    var workloads = p.second
 
-    val population = (1..50).map { (1..10).map { if (random() < 0.5) 0 else 1 } }
+    findSchedule(nodes, workloads)
 
-    val algorithm = GeneticAlgorithm(
-        population,
-        score = { it.sum().toDouble() },
-        //TODO two/single point crossovers
-        cross = { it.first.mapIndexed { index, i -> if (random() < 0.5) i else it.second[index] } },
-        mutate = { it.map { if (random() < 0.9) it else if (random() < 0.5) 0 else 1 } },
-        select = ::rouletteWheelSelection
-    )
-
-    val result = algorithm.run()
-
-    print("Best individual: ")
-    result.forEach { print(it) }
+    //TODO get schedule as output and display it
 }

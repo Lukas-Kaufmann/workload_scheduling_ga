@@ -3,7 +3,27 @@
 
 ### Intellij ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
-# Reference: https://intellij-support.jetbrains.com/hc/en-us/articles/206544839
+
+### MicrosoftOffice ###
+*.tmp
+
+# Word temporary
+~$*.doc*
+
+# Word Auto Backup File
+Backup of *.doc*
+
+# Excel temporary
+~$*.xls*
+
+# Excel Backup File
+*.xlk
+
+# PowerPoint temporary
+~$*.ppt*
+
+# Visio autosave temporary files
+*.~vsd*
 
 # User-specific stuff
 .idea/**/workspace.xml
