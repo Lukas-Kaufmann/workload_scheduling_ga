@@ -1,48 +1,41 @@
-import org.jetbrains.letsPlot.export.ggsave
-import org.jetbrains.letsPlot.geom.geomDensity
-import org.jetbrains.letsPlot.geom.geomLine
-import org.jetbrains.letsPlot.ggsize
-import org.jetbrains.letsPlot.letsPlot
 import sim.ComputeNode
 import sim.WorkLoad
-
-//TODO refactor to function that takes nodes and workloads as input and gives
+import java.io.File
 
 fun randomNodesAndWorkloads(nrNodes: Int, nrWorkloads: Int) = Pair((0 until nrNodes).map { ComputeNode.newRandom(it) }, (0 until nrWorkloads).map {WorkLoad.newRandom(it)})
 
 fun main() {
+    val randomValues = listOf(
+        Pair(20, 200),
+        Pair(20, 400),
+        Pair(20, 50),
+        Pair(10, 20),
+        Pair(20, 20),
+        Pair(50, 500),
+        Pair(100, 200),
+        Pair(100, 1000)
+    )
 
-    var (nodes, workloads) = randomNodesAndWorkloads(2, 100) //TODO read from file
-    val distribution = findSchedule(nodes, workloads)
-
-    println("Distribution:")
-    for ((node, loads) in distribution) {
-        //TODO replace id with names
-        println("Node \t ${node.id}:")
-        for (l in loads) {
-            print(" ${l.id} ");
-        }
-        println()
-
+    for ((nrNodes, nrWork) in randomValues) {
+        val (nodes, workloads) = randomNodesAndWorkloads(nrNodes, nrWork)
+        val distro  = findSchedule(nodes, workloads)
+        distro.writeToFile("rand_distro_${nrNodes}_x_${nrWork}")
     }
 
-    //TODO get schedule as output and display it
+    //TODO read some from file
+
 }
 
+fun Distro.exportString(): String {
+    var s = ""
+    for ((node, loads) in this) {
+        s += "Node ${node.id.toString().padStart(10, ' ')} \t"
+        for (load in loads) {
+            s += "Job ${load.id} "
+        }
+        s += "\n"
+    }
+    return s
+}
 
-//val rand = java.util.Random(1)
-//val n = 400
-//val data = mapOf (
-//    "rating" to List(n/2) { rand.nextGaussian() } + List(n/2) { rand.nextGaussian() * 1.5 + 1.5 },
-//    "cond" to List(n/2) { "A" } + List(n/2) { "B" }
-//)
-//
-//var p = letsPlot(data) + geomDensity { x = "rating"; color = "cond" } + ggsize(500, 250)
-//ggsave(p, "density.png")
-//
-//val line = mapOf(
-//    "height" to List(100) {it},
-//    "other" to List(100) {100 - it}
-//)
-//var p2 = letsPlot(line)  + geomLine {x = "height"; y = "height"} + ggsize(500, 250)
-//ggsave(p2, "line.png")
+fun Distro.writeToFile(filename: String) = File("schedules/$filename.txt").writeText(this.exportString())

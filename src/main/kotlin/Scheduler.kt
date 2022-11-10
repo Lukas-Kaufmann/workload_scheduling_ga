@@ -1,13 +1,13 @@
 import sim.ComputeNode
 import sim.WorkLoad
-import java.util.DoubleSummaryStatistics
-import kotlin.math.log
 import kotlin.math.pow
+import kotlin.math.sqrt
 import kotlin.random.Random
 
 typealias Distro = Map<ComputeNode, List<WorkLoad>>
 
-fun findSchedule(nodes: List<ComputeNode>, workloads: List<WorkLoad>): Distro {
+fun findSchedule(nodes: List<ComputeNode>, workloads: List<WorkLoad>, plotName: String = "fitness_${nodes.size}_nodes_${workloads.size}_workloads.png"): Distro {
+
     var nodeBits = 1
     while (2f.pow(nodeBits) < nodes.size) {
         nodeBits+=1
@@ -25,22 +25,36 @@ fun findSchedule(nodes: List<ComputeNode>, workloads: List<WorkLoad>): Distro {
 
     fun evaluateDistribution(distro: Distro) = distro
             .map { (node, loads) ->
-                //TODO check possible parallelism
-                node.run(1000, loads.toMutableList())
+                val available = node.maxPerStepPerCore * node.cores
+
+                val maxUtilization = loads.fold(Triple(0, 0, 0)) {
+                    sum, elem ->
+                    sum + elem.maxRequiredResources
+                }
+
+                val averageUtilization = loads.fold(Triple(0, 0, 0)) {
+                    sum, elem ->
+                    sum + elem.requiredResources
+                }
+
+                val maxRate = (maxUtilization / available).toList().average()
+                val avgRate = (averageUtilization / available).toList().average()
+
+                if (maxRate <= 1.0) (avgRate + maxRate) / 2.0 else maxRate
             }
             .map {
                 when {
                     it >= 1.2 -> (1.0 / it).pow(2.0)
                     it > 1 -> (-5 * it) + 6
-                    it > 0.2 -> it
-                    it >= 0 ->(-5 * it) + 1
+                    it > 0.2 -> it.pow(5.0)
+                    it >= 0 -> -sqrt(5*it) + 1
                     else -> 0.0
                 }
-            }.average()
+            }
+        .average()
 
 
     fun genomeToDistribution(genome: List<Int>, nodes: Collection<ComputeNode>, loads: Collection<WorkLoad>) : Distro {
-        val mutLoads = loads.toMutableList()
 
         val genomeIds = genome
             .chunked(pairingSize)
@@ -48,7 +62,9 @@ fun findSchedule(nodes: List<ComputeNode>, workloads: List<WorkLoad>): Distro {
             .map { Pair(grayToBin(it.first), grayToBin(it.second)) }
             .map { Pair(binToDec(it.first) % workloads.size, binToDec(it.second) % nodes.size)}
 
-        var distro = mutableMapOf<ComputeNode, MutableList<WorkLoad>>()
+        val distro = mutableMapOf<ComputeNode, MutableList<WorkLoad>>()
+
+        val mutLoads = loads.toMutableList()
 
         for ((workId, nodeId) in genomeIds) {
             val node = nodes.find { it.id == nodeId } ?: throw java.lang.IllegalStateException()
@@ -61,68 +77,49 @@ fun findSchedule(nodes: List<ComputeNode>, workloads: List<WorkLoad>): Distro {
             distro.putIfAbsent(node, mutableListOf(work))?.add(work)
         }
 
+        for (node in nodes) {
+            distro.putIfAbsent(node, mutableListOf())
+        }
+
         return distro
+    }
+
+    fun switchNodeIds(genome: List<Int>): List<Int> {
+        if (Math.random() < 0.9) {
+               return genome
+        }
+        val mutGenome = genome.toMutableList()
+
+        repeat(10) {
+            val nodePos1 = Random.nextInt(0, nodes.size)
+            val nodePos2 = Random.nextInt(0, nodes.size)
+
+            val nodeRange1 = (nodePos1 * pairingSize)+workBits+1 until (nodePos1+1)*pairingSize
+            val nodeRange2 = (nodePos2 * pairingSize)+workBits+1 until (nodePos2+1)*pairingSize
+
+            val list1 = nodeRange1.toList()
+            val list2 = nodeRange2.toList()
+            for (i in 0 until (nodeRange1.last - nodeRange1.first)) {
+                val temp = mutGenome[list1[i]]
+                mutGenome[list1[i]] = mutGenome[list2[i]]
+                mutGenome[list2[i]] = temp
+            }
+        }
+        return mutGenome
     }
 
     val algorithm = GeneticAlgorithm(
         population,
         score = { evaluateDistribution(genomeToDistribution(it, nodes, workloads)) },
-        cross = ::twoPointCrossOver,
-        mutate = { it.map { if (Math.random() < 0.1) it else if (Math.random() < 0.5) 0 else 1 } },
-        select = ::rouletteWheelSelection
+        cross = {switchNodeIds(twoPointCrossOver(it))},
+        mutate = { individual -> individual.map { if (Math.random() < 0.1) it else it.xor(1) } },
+        select = ::selection
     )
 
     val result = algorithm.run()
 
-    return genomeToDistribution(result, nodes, workloads)
+    plotFitness(result.second, plotName)
+
+    return genomeToDistribution(result.first, nodes, workloads)
 }
 
-//this method was provided by the author of the kotlin genetic algorithm class, keeping it because why not, its a oneliner
-fun spaghettiCrossover(parents: Pair<List<Int>, List<Int>>) = parents.first.mapIndexed { index, i -> if (Math.random() > 0.5) i else parents.second[index]}
-
-fun onePointCrossOver(parents: Pair<List<Int>, List<Int>>): List<Int> {
-    val cross = Random.nextInt(parents.first.size)
-    return parents.first.mapIndexed { index, b -> if (index >= cross) b else parents.second[index] }
-}
-
-fun twoPointCrossOver(parents: Pair<List<Int>, List<Int>>): List<Int> {
-    val start = Random.nextInt(parents.first.size)
-    val end = Random.nextInt(parents.first.size)
-
-    var child = parents.first.toMutableList()
-
-    var index = start
-    while (end != index) {
-        child[index] = parents.second[index]
-
-        index = (index + 1) % parents.first.size
-    }
-    return child
-}
-
-
-
-
-fun grayToBin(gray: List<Int>): List<Int> {
-    var bin = (1..gray.size).map { gray[0] }.toMutableList()
-
-    for ((index, value ) in gray.withIndex()) {
-        if (index == 0) {
-            bin[index] = gray[index]
-        } else if (value == 0) {
-            bin[index] = bin[index-1]
-        } else {
-            bin[index] = bin[index-1].xor(1)
-        }
-
-    }
-    return bin
-}
-
-fun binToDec(bin: List<Int>) : Int {
-    var n = 0
-    for ((index, value) in bin.reversed().withIndex()) {
-        n += value * (1 shl index)
-    }
-    return n
-}
