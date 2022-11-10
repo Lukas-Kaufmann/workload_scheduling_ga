@@ -13,11 +13,13 @@ class GeneticAlgorithm<T>(
      * @param epochs number of optimization epochs.
      * @property mutationProbability a value between 0 and 1, which defines the mutation probability of each child.
      */
-    fun run(epochs: Int = 1000, mutationProbability: Double = 0.1): T {
+    fun run(epochs: Int = 20000, mutationProbability: Double = 0.2): T {
         var scoredPopulation = population.map { Pair(score(it), it) }.sortedByDescending { it.first }
 
         //TODO more cancellation conditions (if some fitness reached, if no change in n-generations)
-        for (i in 0..epochs)
+        // combine with some datarecorder class
+
+        for (i in 0..epochs) {
             scoredPopulation = scoredPopulation
                 .map { Pair(select(scoredPopulation), select(scoredPopulation)) }
                 .map { cross(it) }
@@ -25,14 +27,22 @@ class GeneticAlgorithm<T>(
                 .map { Pair(score(it), it) }
                 .sortedByDescending { it.first }
 
-        return scoredPopulation.first().second
+            if (i % 100 == 0) {
+                println("Epoch $i \t max fitness: ${scoredPopulation.first().first}")
+            }
+        }
+
+
+        return scoredPopulation.maxBy { it.first }.second
     }
 }
 
 fun <T> rouletteWheelSelection(scoredPopulation: Collection<Pair<Double, T>>): T {
     var value = scoredPopulation.sumOf { it.first } * random()
 
-    for ((fitness, individual) in scoredPopulation) {
+    val average = scoredPopulation.map { it.first }.average()
+
+    for ((fitness, individual) in scoredPopulation.filter { it.first > average }) {
         value -= fitness
         if (value <= 0) return individual
     }

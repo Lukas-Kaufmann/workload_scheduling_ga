@@ -15,6 +15,9 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    implementation("org.jetbrains.lets-plot:lets-plot-image-export:2.5.1")
+    implementation("org.jetbrains.lets-plot:lets-plot-common:2.5.0")
+    implementation("org.jetbrains.lets-plot:lets-plot-kotlin-jvm:4.1.0")
     implementation("space.kscience:plotlykt-server:0.5.0")
 }
 
