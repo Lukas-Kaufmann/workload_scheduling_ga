@@ -1,5 +1,6 @@
 import sim.ComputeNode
 import sim.WorkLoad
+import sim.WorkLoadLevel
 import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -26,26 +27,26 @@ fun findSchedule(nodes: List<ComputeNode>, workloads: List<WorkLoad>, plotName: 
     fun evaluateDistribution(distro: Distro) = distro
             .map { (node, loads) ->
                 val available = node.maxPerStepPerCore * node.cores
-
-                val maxUtilization = loads.fold(Triple(0, 0, 0)) {
-                    sum, elem ->
+                val highEffortUtil = loads.filter { it.level == WorkLoadLevel.ALWAYS_RUNNING }.fold(Triple(0, 0, 0)) {
+                        sum, elem ->
                     sum + elem.maxRequiredResources
                 }
 
-                val averageUtilization = loads.fold(Triple(0, 0, 0)) {
-                    sum, elem ->
+                val lowEffortUtil = loads.filter { it.level == WorkLoadLevel.BEST_EFFORT }.fold(Triple(0, 0, 0)) {
+                        sum, elem ->
                     sum + elem.requiredResources
                 }
 
-                val maxRate = (maxUtilization / available).toList().average()
-                val avgRate = (averageUtilization / available).toList().average()
 
-                if (maxRate <= 1.0) (avgRate + maxRate) / 2.0 else maxRate
+                val highRate = (highEffortUtil / available).toList().average()
+                val lowRate = (lowEffortUtil / available).toList().average()
+
+                if (highRate > 1.0) -1.0 else lowRate
+
             }
             .map {
                 when {
-                    it >= 1.2 -> (1.0 / it).pow(2.0)
-                    it > 1 -> (-5 * it) + 6
+                    it >= 1 -> (1.0 / it).pow(2.0)
                     it > 0.2 -> it.pow(5.0)
                     it >= 0 -> -sqrt(5*it) + 1
                     else -> 0.0
