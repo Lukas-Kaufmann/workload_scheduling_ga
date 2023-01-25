@@ -1,6 +1,7 @@
 import sim.ComputeNode
 import sim.WorkLoad
 import sim.WorkLoadLevel
+import kotlin.concurrent.thread
 import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -119,7 +120,9 @@ fun findSchedule(nodes: List<ComputeNode>, workloads: List<WorkLoad>, plotName: 
 
     val result = algorithm.run()
 
-    plotFitness(result.second, plotName)
+    thread {
+        plotFitness(result.second, plotName)
+    }
 
     return genomeToDistribution(result.first, nodes, workloads)
 }

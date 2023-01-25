@@ -9,7 +9,7 @@ fun main() {
 
     val randomValues = listOf(
         Pair(20, 200),
-        Pair(20, 400),
+        Pair(20, 40),
         Pair(20, 50),
         Pair(10, 20),
         Pair(20, 20),
@@ -23,6 +23,7 @@ fun main() {
         val (nodes, workloads) = randomNodesAndWorkloads(nrNodes, nrWork)
         val distro  = findSchedule(nodes, workloads)
         distro.writeToFile("rand_distro_${nrNodes}_x_${nrWork}")
+        println("Done $nrNodes x $nrWork")
     }
 
 }
